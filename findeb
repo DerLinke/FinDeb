@@ -1,0 +1,239 @@
+#!/usr/bin/env python3
+import sys
+import argparse
+import subprocess
+import os
+import shutil
+import json
+import importlib.util
+from concurrent.futures import ThreadPoolExecutor
+from packaging import version
+
+# Pfade für die isolierte Umgebung & Konfiguration
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+VENV_DIR = os.path.join(BASE_DIR, ".venv")
+VENV_PYTHON = os.path.join(VENV_DIR, "bin", "python3")
+CONFIG_DIR = os.path.expanduser("~/.config/findeb")
+CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
+APPIMAGE_DIR = os.path.expanduser("~/Applications")
+
+def is_in_venv():
+    return sys.prefix != sys.base_prefix
+
+def check_module(name):
+    return importlib.util.find_spec(name) is not None
+
+def console_print(text):
+    if check_module("rich"):
+        from rich.console import Console
+        Console().print(text)
+    else:
+        print(text)
+
+def run_sudo(command):
+    console_print(f"[bold yellow]󰚌 Führe aus:[/bold yellow] sudo {' '.join(command)}")
+    return subprocess.run(["sudo"] + command)
+
+def load_config():
+    if not os.path.exists(CONFIG_DIR):
+        os.makedirs(CONFIG_DIR)
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r") as f:
+                return json.load(f)
+        except: pass
+    return {"enabled_sources": ["apt", "extrepo", "deb-get", "flatpak", "appimage"]}
+
+def save_config(config):
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(config, f, indent=4)
+
+def ensure_manager_installed(source_key):
+    managers = {"snap": "snapd", "flatpak": "flatpak", "extrepo": "extrepo", "pipx": "pipx", "npm": "nodejs", "pkcon": "packagekit-tools"}
+    pkg = managers.get(source_key)
+    check_bin = source_key
+    if source_key == "npm" and shutil.which("node"): check_bin = "node"
+    if pkg and not shutil.which(check_bin if source_key != "pkcon" else "pkcon"):
+        console_print(f"[yellow]󰚌 Installiere Abhängigkeit für {source_key}: {pkg}...[/yellow]")
+        run_sudo(["apt", "update"])
+        run_sudo(["apt", "install", "-y", pkg])
+        if source_key == "pipx": subprocess.run(["pipx", "ensurepath"])
+        return True
+    return False
+
+def setup():
+    if not is_in_venv() and os.path.exists(VENV_PYTHON):
+        os.execv(VENV_PYTHON, [VENV_PYTHON, os.path.abspath(__file__)] + sys.argv[1:])
+        return
+
+    import questionary
+    from rich.panel import Panel
+    from rich.console import Console
+    console = Console()
+    console.print(Panel("[bold blue]findeb Setup[/bold blue]\nWähle deine Quellen. Fehlende Tools werden bei Bedarf installiert.", expand=False, border_style="dim"))
+    
+    all_possible = [
+        ("apt", "apt (Standard Debian Repos)"), ("extrepo", "extrepo (PPA/Drittanbieter)"),
+        ("deb-get", "deb-get (Direkt von GitHub)"), ("flatpak", "flatpak (Flathub Apps)"),
+        ("snap", "snap (Snapcraft Apps)"), ("appimage", "appimage (GitHub Binaries)"),
+        ("pipx", "pipx (Python CLI Tools)"), ("npm", "npm (Node.js Tools)"),
+        ("pkcon", "pkcon (PackageKit / KDE)"), ("pacman", "pacman (Arch Linux)")
+    ]
+    
+    current_config = load_config()
+    enabled_now = current_config.get("enabled_sources", [])
+    choices = []
+    for key, label in all_possible:
+        is_installed = shutil.which(key if key != "pkcon" else "pkcon") is not None
+        if key == "npm" and shutil.which("node"): is_installed = True
+        if key in ["apt", "extrepo", "deb-get", "appimage"]: is_installed = True 
+        status = "" if is_installed else " [dim](nicht installiert)[/dim]"
+        choices.append({"name": f"{label}{status}", "value": key, "checked": key in enabled_now})
+    
+    selected_sources = questionary.checkbox("Aktiviere deine gewünschten Quellen:", choices=choices).ask()
+    if selected_sources is not None:
+        for src in selected_sources:
+            if src not in ["apt", "appimage", "deb-get"]: ensure_manager_installed(src)
+        save_config({"enabled_sources": selected_sources})
+        console_print("[bold green]✅ Setup abgeschlossen![/bold green]")
+
+def get_version_key(v_str):
+    """Hilfsfunktion für stabiles Versions-Sorting."""
+    try:
+        # Bereinigen von Präfixen wie 'v'
+        clean_v = v_str.lower().replace("v", "").split("-")[0].split("+")[0]
+        return version.parse(clean_v)
+    except:
+        return version.parse("0.0.0")
+
+def search(query):
+    if not is_in_venv() and os.path.exists(VENV_PYTHON):
+        os.execv(VENV_PYTHON, [VENV_PYTHON, os.path.abspath(__file__)] + sys.argv[1:])
+        return
+
+    from rich.console import Console
+    from rich.table import Table
+    from rich.live import Live
+    from rich.spinner import Spinner
+    import questionary
+    
+    config = load_config()
+    enabled = config.get("enabled_sources", [])
+    console = Console()
+    engines = []
+    source_map = {"apt": "AptSource", "extrepo": "ExtRepoSource", "deb-get": "DebGetSource", "flatpak": "FlatpakSource", "snap": "SnapSource", "appimage": "AppImageSource", "pipx": "PipxSource", "pkcon": "PkconSource", "pacman": "PacmanSource", "npm": "NpmSource"}
+    
+    for key, class_name in source_map.items():
+        if key in enabled:
+            try:
+                module = importlib.import_module(f"sources.{key.replace('-', '_')}")
+                cls = getattr(module, class_name); engines.append(cls())
+            except ImportError: pass
+
+    if not engines:
+        console_print("[yellow]Keine Quellen aktiv. Bitte 'findeb --setup' ausführen.[/yellow]"); return
+
+    with Live(Spinner("dots", text=f"Suche nach '{query}'..."), refresh_per_second=10, console=console) as live:
+        all_results = []
+        with ThreadPoolExecutor() as executor:
+            futures = [executor.submit(engine.search, query) for engine in engines]
+            for f in futures: all_results.extend(f.result())
+        live.update("")
+
+    if not all_results:
+        console_print("[red]Keine Treffer.[/red]"); return
+
+    # Gruppierung
+    grouped = {}
+    for res in all_results:
+        raw_name = res["name"].replace(":", "").split("(")[0].strip()
+        name_key = raw_name.lower()
+        if name_key not in grouped: grouped[name_key] = []
+        grouped[name_key].append(res)
+
+    final_list = []
+    for name_key, variants in grouped.items():
+        # Innerhalb der Varianten sortieren: Neueste Version oder bevorzugte Quellen zuerst
+        variants.sort(key=lambda x: get_version_key(str(x.get("version", "0"))), reverse=True)
+        
+        max_score = max(v.get("score", 30) for v in variants)
+        display_name = variants[0]["name"].replace(":", "").split("(")[0].strip()
+        if query.lower() == name_key: max_score += 100
+        elif name_key.startswith(query.lower()): max_score += 50
+        
+        final_list.append({
+            "display_name": display_name,
+            "variants": variants,
+            "score": max_score,
+            "description": variants[0]["description"]
+        })
+
+    final_list.sort(key=lambda x: (-x["score"], x["display_name"]))
+    display_list = final_list[:35]
+
+    table = Table(box=None, header_style="bold cyan", collapse_padding=True)
+    table.add_column("#", justify="right", style="dim", width=3)
+    table.add_column("Paket", style="bold white", width=25)
+    table.add_column("Quellen", style="yellow")
+    table.add_column("Top-Version", style="green")
+    table.add_column("Beschreibung", style="dim")
+
+    for idx, item in enumerate(display_list, 1):
+        sources = ", ".join(sorted(set(v["source"] for v in item["variants"])))
+        top_v = item["variants"][0]["version"]
+        table.add_row(str(idx), item["display_name"], sources, str(top_v)[:15], item["description"][:60])
+
+    console.print(table)
+    
+    choices = [f"{str(idx).rjust(2)} │ {item['display_name'].ljust(25)} │ {len(item['variants'])} Optionen" for idx, item in enumerate(display_list, 1)]
+    choices.append("Abbrechen")
+    selected_pkg = questionary.select("Paket wählen:", choices=choices, 
+                                     style=questionary.Style([('highlighted', 'fg:black bg:cyan'), ('pointer', 'fg:cyan bold')])).ask()
+    if not selected_pkg or "Abbrechen" in selected_pkg: return
+    pkg_idx = int(selected_pkg.split("│")[0].strip()) - 1
+    target_item = display_list[pkg_idx]
+    
+    if len(target_item["variants"]) > 1:
+        # Detaillierte Auswahl der Variante
+        v_choices = []
+        for v in target_item["variants"]:
+            v_choices.append(f"{v['source'].ljust(10)} │ Version: {str(v['version']).ljust(15)} │ {v['name']}")
+        
+        v_selected = questionary.select("Quelle/Version wählen:", choices=v_choices).ask()
+        if not v_selected: return
+        v_idx = v_choices.index(v_selected); final_pkg = target_item["variants"][v_idx]
+    else: final_pkg = target_item["variants"][0]
+    
+    install_pkg(final_pkg)
+
+def install_pkg(pkg):
+    from rich.console import Console
+    console = Console(); console.print(f"\n[bold cyan] Installiere {pkg['name'].replace(':', '')} via {pkg['source']}...[/bold cyan]")
+    if pkg["source"] == "extrepo":
+        run_sudo(["extrepo", "enable", pkg.get("repo_id", pkg["name"].replace(":", ""))])
+        run_sudo(["apt", "update"]); run_sudo(["apt", "install", "-y", pkg["name"].replace(":", "")])
+    elif pkg["source"] == "appimage":
+        from installer_appimage import install_appimage; install_appimage(pkg)
+    elif pkg["source"] == "npm":
+        try: subprocess.run(pkg["install_cmd"], check=True)
+        except: run_sudo(pkg["install_cmd"])
+    else: run_sudo(pkg["install_cmd"])
+
+def main():
+    parser = argparse.ArgumentParser(description="findeb – Universal Package Manager Wrapper")
+    parser.add_argument("query", nargs="?", help="Suchbegriff")
+    parser.add_argument("--setup", action="store_true", help="Konfiguration & Einrichtung")
+    parser.add_argument("-u", "--update", action="store_true", help="System-Update (Ultimate Debian Updater Integration)")
+    
+    args = parser.parse_args()
+    if args.update:
+        from maintenance import run_maintenance
+        run_maintenance(load_config().get("enabled_sources", []))
+    elif args.setup: setup()
+    elif args.query: search(args.query)
+    else:
+        if not os.path.exists(CONFIG_FILE): setup()
+        else: parser.print_help()
+
+if __name__ == "__main__":
+    main()

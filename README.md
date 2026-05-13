@@ -38,12 +38,16 @@ findeb -u
 
 # Configure Sources
 findeb --setup
+
+# Clear Search Cache
+findeb --clear-cache
 ```
 
 ## 📝 TODO
-- [ ] **Fuzzy Matching:** Tolerance for typos during search.
-- [ ] **Exclusion Criteria:** Option to hide specific packages.
-- [ ] **Caching:** Improve speed for frequent queries.
+- [x] **Fuzzy Matching:** Tolerance for typos during search.
+- [x] **Exclusion Criteria:** Option to hide specific packages (via `config.json`).
+- [x] **Caching:** 12h TTL for search results in `~/.cache/findeb/`.
+- [x] **Desktop Integration:** Auto-creation of `.desktop` files for AppImages.
 
 ---
 *Developed with ❤️ by Dan & Gemini CLI.*

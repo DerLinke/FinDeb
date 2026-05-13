@@ -1,0 +1,4 @@
+#!/bin/bash
+# Findet den Ordner, in dem dieses Skript liegt
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+"$SCRIPT_DIR/.venv/bin/python3" "$SCRIPT_DIR/findeb" "$@"

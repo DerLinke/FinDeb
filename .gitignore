@@ -15,5 +15,5 @@ GEMINI.md
 *.AppImage
 *.deb
 
-# System-specific
-findeb_wrapper
+# Backups
+*.bak

@@ -8,10 +8,23 @@ def run_maintenance(enabled_sources):
     
     console = Console()
     
-    # Pfad zu deinem spezialisierten Updater
-    updater_path = os.path.expanduser("~/Projekte/Ultimate-Debian-Updater/update.sh")
+    # Suche nach dem Updater an verschiedenen Orten für maximale Portabilität
+    possible_paths = [
+        # 1. Relativ zum aktuellen Skript (z.B. wenn beide Projekte im gleichen Ordner liegen)
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Ultimate-Debian-Updater", "update.sh"),
+        # 2. Klassischer Pfad im Home-Verzeichnis
+        os.path.expanduser("~/Projekte/Ultimate-Debian-Updater/update.sh"),
+        # 3. Falls der Nutzer es direkt in ~/bin oder ähnliches verlinkt hat
+        shutil.which("ultimate-debian-updater")
+    ]
     
-    if os.path.exists(updater_path):
+    updater_path = None
+    for path in possible_paths:
+        if path and os.path.exists(path):
+            updater_path = path
+            break
+    
+    if updater_path:
         console.print(f"[bold green]󰚌 Ultimate Debian Updater gefunden![/bold green]")
         console.print(f"[dim]Starte externe Wartung: {updater_path}[/dim]\n")
         # Wir führen dein Original-Script aus
@@ -36,4 +49,4 @@ def run_maintenance(enabled_sources):
             
             console.print("\n[bold green]✅ Basis-Wartung abgeschlossen.[/bold green]")
         else:
-            console_print("\n[yellow]Tipp: Installiere den Ultimate Debian Updater in ~/Projekte/ für volle Power![/yellow]")
+            console.print("\n[yellow]Tipp: Installiere den Ultimate Debian Updater in ~/Projekte/ für volle Power![/yellow]")

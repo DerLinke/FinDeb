@@ -5,6 +5,7 @@ __pycache__/
 
 # Local Config (User Specific)
 config.json
+GEMINI.md
 
 # Cache
 .cache/

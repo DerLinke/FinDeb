@@ -1,4 +1,5 @@
 #!/bin/bash
-# Findet den Ordner, in dem dieses Skript liegt
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Findet den tatsächlichen Ordner des Projekts, auch wenn dieses Skript ein Symlink ist
+REAL_PATH=$(readlink -f "${BASH_SOURCE[0]}")
+SCRIPT_DIR="$( cd "$( dirname "$REAL_PATH" )" && pwd )"
 "$SCRIPT_DIR/.venv/bin/python3" "$SCRIPT_DIR/findeb" "$@"

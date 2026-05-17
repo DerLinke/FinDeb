@@ -20,34 +20,38 @@
 - ✅ **npm** (Node.js Tools)
 - ✅ **pkcon** (PackageKit/KDE)
 
-## 🛠 Installation
+## 📦 Installation
+
+### Der einfachste Weg (.deb Paket)
+Da `findeb` als eigenständiges Paket gebaut wird, sind keine Python-Abhängigkeiten auf deinem System nötig. Das Paket wurde auf **Debian Trixie** (Testing) gebaut und ist kompatibel mit modernen Debian-basierten Systemen (Ubuntu, Pop!_OS, etc.).
+
+1. Lade die neueste `.deb`-Datei von der [Releases-Seite](https://github.com/DerLinke/FinDeb/releases) herunter.
+2. Installiere sie via Terminal:
+   ```bash
+   sudo apt install ./findeb_1.0.0_amd64.deb
+   ```
+
+### Für Entwickler (Source-Installation)
 ```bash
-git clone https://github.com/DerLinke/findeb.git
-cd findeb
+git clone https://github.com/DerLinke/FinDeb.git
+cd FinDeb
 chmod +x findeb
 ./findeb --setup
 ```
 
-## ⌨️ Usage
-```bash
-# Search & Install
-findeb <query>
+## 🛠 System-Abhängigkeiten
+`findeb` fungiert als Wrapper. Für die volle Funktionalität sollten folgende Tools auf deinem System vorhanden sein (viele können via `findeb --setup` nachinstalliert werden):
+- `apt` & `dpkg` (Standard auf Debian/Ubuntu)
+- `extrepo` (für Drittanbieter-Quellen)
+- `deb-get` (für GitHub-Releases)
+- `flatpak` & `snapd` (optional)
+- `pipx` & `npm` (für CLI-Tools)
 
-# Update System (Brücke zum Ultimate Debian Updater)
-findeb -u
-
-# Configure Sources
-findeb --setup
-
-# Clear Search Cache
-findeb --clear-cache
-```
-
-## 📝 TODO
-- [x] **Fuzzy Matching:** Tolerance for typos during search.
-- [x] **Exclusion Criteria:** Option to hide specific packages (via `config.json`).
-- [x] **Caching:** 12h TTL for search results in `~/.cache/findeb/`.
-- [x] **Desktop Integration:** Auto-creation of `.desktop` files for AppImages.
+## 🤝 Mitwirken / Contributing
+Dieses Projekt lebt vom Austausch! Wir wollen die Brücke zwischen klassischen Repositories und modernen Distributionen so nahtlos wie möglich machen. 
+- **Bugs gefunden?** Erstelle gerne ein Issue.
+- **Neue Quelle gewünscht?** Schau dir die Module in `sources/` an – es ist sehr einfach, neue Paketquellen hinzuzufügen.
+- **Pull Requests** sind immer willkommen!
 
 ---
-*Developed with ❤️ by Dan & Gemini CLI.*
+*Developed with ❤️ by Daniel Frey & Gemini CLI.*

@@ -234,6 +234,7 @@ def search(query):
         console_print("[red]Keine Treffer.[/red]"); return
 
     # Gruppierung & Filterung
+    final_list = []
     grouped = {}
     from difflib import SequenceMatcher
     for res in all_results:

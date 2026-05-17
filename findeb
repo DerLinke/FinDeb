@@ -337,29 +337,28 @@ def install_pkg(pkg):
     else: run_sudo(pkg["install_cmd"])
 
 def show_banner():
-    # Definition der TrueColor RGB-Werte (Horizontaler Verlauf von Rot nach Blau)
-    C_L0 = "\033[38;2;255;0;0m"
-    C_L1 = "\033[38;2;245;0;10m"
-    C_L5 = "\033[38;2;208;0;47m"
-    C_L6 = "\033[38;2;198;0;57m"
-    C_L10 = "\033[38;2;161;0;94m"
-    C_L11 = "\033[38;2;151;0;104m"
+    # Definition der Branding-Farben via Rich-Tags (Horizontaler Verlauf)
+    C_L0 = "[rgb(255,0,0)]"
+    C_L1 = "[rgb(245,0,10)]"
+    C_L5 = "[rgb(208,0,47)]"
+    C_L6 = "[rgb(198,0,57)]"
+    C_L10 = "[rgb(161,0,94)]"
+    C_L11 = "[rgb(151,0,104)]"
 
-    C_R17 = "\033[38;2;96;0;159m"
-    C_R18 = "\033[38;2;86;0;169m"
-    C_R19 = "\033[38;2;76;0;179m"
-    C_R20 = "\033[38;2;66;0;189m"
-    C_R21 = "\033[38;2;56;0;199m"
-    C_R22 = "\033[38;2;47;0;208m"
-    C_R26 = "\033[38;2;9;0;246m"
-    C_R27 = "\033[38;2;0;0;255m"
-    RESET = "\033[0m"
+    C_R17 = "[rgb(96,0,159)]"
+    C_R18 = "[rgb(86,0,169)]"
+    C_R19 = "[rgb(76,0,179)]"
+    C_R20 = "[rgb(66,0,189)]"
+    C_R21 = "[rgb(56,0,199)]"
+    C_R22 = "[rgb(47,0,208)]"
+    C_R26 = "[rgb(9,0,246)]"
+    C_R27 = "[rgb(0,0,255)]"
 
-    console_print(f"          {C_L10}█{C_L11}█{RESET}     {C_R17}█{C_R18}█{C_R19}█{C_R20}█{C_R21}█{RESET}")
-    console_print(f"     {C_L5}█{C_L6}█{RESET}                    {C_R26}█{C_R27}█{RESET}")
-    console_print(f"{C_L0}█{C_L1}█{RESET}                {C_R18}█{C_R19}█{C_R20}█{C_R21}█{C_R22}█{RESET} [bold white]FinDeb v1.0.0[/bold white]")
-    console_print(f"     {C_L5}█{C_L6}█{RESET}                    {C_R26}█{C_R27}█{RESET}")
-    console_print(f"          {C_L10}█{C_L11}█{RESET}     {C_R17}█{C_R18}█{C_R19}█{C_R20}█{C_R21}█{RESET}\n")
+    console_print(f"          {C_L10}█{C_L11}█[/]     {C_R17}█{C_R18}█{C_R19}█{C_R20}█{C_R21}█[/]")
+    console_print(f"     {C_L5}█{C_L6}█[/]                    {C_R26}█{C_R27}█[/]")
+    console_print(f"{C_L0}█{C_L1}█[/]                {C_R18}█{C_R19}█{C_R20}█{C_R21}█{C_R22}█[/] [bold white]FinDeb v1.0.0[/bold white]")
+    console_print(f"     {C_L5}█{C_L6}█[/]                    {C_R26}█{C_R27}█[/]")
+    console_print(f"          {C_L10}█{C_L11}█[/]     {C_R17}█{C_R18}█{C_R19}█{C_R20}█{C_R21}█[/]\n")
 
 def main():
     show_banner()

@@ -274,10 +274,14 @@ def search(query):
     final_list.sort(key=lambda x: (-x["score"], x["display_name"]))
     display_list = final_list[:35]
 
-    table = Table(box=None, header_style="bold cyan", collapse_padding=True)
+    # Definition der Branding-Farben für die Tabelle
+    BRAND_BLUE = "#0000FF"
+    BRAND_MAGENTA = "#96009F"
+
+    table = Table(box=None, header_style=f"bold {BRAND_BLUE}", collapse_padding=True)
     table.add_column("#", justify="right", style="dim", width=3)
     table.add_column("Paket", style="bold white", width=25)
-    table.add_column("Quellen", style="yellow")
+    table.add_column("Quellen", style=BRAND_MAGENTA)
     table.add_column("Top-Version", style="green")
     table.add_column("Beschreibung", style="dim")
 
@@ -291,7 +295,11 @@ def search(query):
     choices = [f"{str(idx).rjust(2)} │ {item['display_name'].ljust(25)} │ {len(item['variants'])} Optionen" for idx, item in enumerate(display_list, 1)]
     choices.append("Abbrechen")
     selected_pkg = questionary.select("Paket wählen:", choices=choices, 
-                                     style=questionary.Style([('highlighted', 'fg:black bg:cyan'), ('pointer', 'fg:cyan bold')])).ask()
+                                     style=questionary.Style([
+                                         ('highlighted', f'fg:white bg:{BRAND_BLUE} bold'), 
+                                         ('pointer', f'fg:{BRAND_BLUE} bold'),
+                                         ('answer', f'fg:{BRAND_BLUE} bold')
+                                     ])).ask()
     if not selected_pkg or "Abbrechen" in selected_pkg: return
     pkg_idx = int(selected_pkg.split("│")[0].strip()) - 1
     target_item = display_list[pkg_idx]
@@ -302,7 +310,12 @@ def search(query):
         for v in target_item["variants"]:
             v_choices.append(f"{v['source'].ljust(10)} │ Version: {str(v['version']).ljust(15)} │ {v['name']}")
         
-        v_selected = questionary.select("Quelle/Version wählen:", choices=v_choices).ask()
+        v_selected = questionary.select("Quelle/Version wählen:", choices=v_choices,
+                                       style=questionary.Style([
+                                           ('highlighted', f'fg:white bg:{BRAND_MAGENTA} bold'), 
+                                           ('pointer', f'fg:{BRAND_MAGENTA} bold'),
+                                           ('answer', f'fg:{BRAND_MAGENTA} bold')
+                                       ])).ask()
         if not v_selected: return
         v_idx = v_choices.index(v_selected); final_pkg = target_item["variants"][v_idx]
     else: final_pkg = target_item["variants"][0]
@@ -311,7 +324,8 @@ def search(query):
 
 def install_pkg(pkg):
     from rich.console import Console
-    console = Console(); console.print(f"\n[bold cyan] Installiere {pkg['name'].replace(':', '')} via {pkg['source']}...[/bold cyan]")
+    BRAND_BLUE = "#0000FF"
+    console = Console(); console.print(f"\n[bold {BRAND_BLUE}] Installiere {pkg['name'].replace(':', '')} via {pkg['source']}...[/bold {BRAND_BLUE}]")
     if pkg["source"] == "extrepo":
         run_sudo(["extrepo", "enable", pkg.get("repo_id", pkg["name"].replace(":", ""))])
         run_sudo(["apt", "update"]); run_sudo(["apt", "install", "-y", pkg["name"].replace(":", "")])

@@ -322,7 +322,33 @@ def install_pkg(pkg):
         except: run_sudo(pkg["install_cmd"])
     else: run_sudo(pkg["install_cmd"])
 
+def show_banner():
+    # Definition der TrueColor RGB-Werte (Horizontaler Verlauf von Rot nach Blau)
+    C_L0 = "\033[38;2;255;0;0m"
+    C_L1 = "\033[38;2;245;0;10m"
+    C_L5 = "\033[38;2;208;0;47m"
+    C_L6 = "\033[38;2;198;0;57m"
+    C_L10 = "\033[38;2;161;0;94m"
+    C_L11 = "\033[38;2;151;0;104m"
+
+    C_R17 = "\033[38;2;96;0;159m"
+    C_R18 = "\033[38;2;86;0;169m"
+    C_R19 = "\033[38;2;76;0;179m"
+    C_R20 = "\033[38;2;66;0;189m"
+    C_R21 = "\033[38;2;56;0;199m"
+    C_R22 = "\033[38;2;47;0;208m"
+    C_R26 = "\033[38;2;9;0;246m"
+    C_R27 = "\033[38;2;0;0;255m"
+    RESET = "\033[0m"
+
+    console_print(f"          {C_L10}█{C_L11}█{RESET}     {C_R17}█{C_R18}█{C_R19}█{C_R20}█{C_R21}█{RESET}")
+    console_print(f"     {C_L5}█{C_L6}█{RESET}                    {C_R26}█{C_R27}█{RESET}")
+    console_print(f"{C_L0}█{C_L1}█{RESET}                {C_R18}█{C_R19}█{C_R20}█{C_R21}█{C_R22}█{RESET} [bold white]FinDeb v1.0.0[/bold white]")
+    console_print(f"     {C_L5}█{C_L6}█{RESET}                    {C_R26}█{C_R27}█{RESET}")
+    console_print(f"          {C_L10}█{C_L11}█{RESET}     {C_R17}█{C_R18}█{C_R19}█{C_R20}█{C_R21}█{RESET}\n")
+
 def main():
+    show_banner()
     parser = argparse.ArgumentParser(description="findeb – Universal Package Manager Wrapper")
     parser.add_argument("query", nargs="?", help="Suchbegriff")
     parser.add_argument("--setup", action="store_true", help="Konfiguration & Einrichtung")

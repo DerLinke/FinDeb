@@ -54,4 +54,6 @@ Dieses Projekt lebt vom Austausch! Wir wollen die Brücke zwischen klassischen R
 - **Pull Requests** sind immer willkommen!
 
 ---
-*Developed with ❤️ by Daniel Frey & Gemini CLI.*
+<p align="center">
+  <img src="logo.svg" width="450" alt="FinDeb Logo">
+</p>

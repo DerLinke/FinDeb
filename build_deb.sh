@@ -5,7 +5,7 @@
 
 set -e
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 MAINTAINER="Daniel Frey <https://github.com/DerLinke>"
 HOMEPAGE="https://github.com/DerLinke/FinDeb"
 DESCRIPTION="The Universal Package Manager Wrapper"
@@ -34,7 +34,7 @@ for f in sources/*.py; do
 done
 
 # Zusätzliche Hidden-Imports für die Hauptlogik
-HIDDEN_IMPORTS="$HIDDEN_IMPORTS --hidden-import maintenance --hidden-import installer_appimage"
+HIDDEN_IMPORTS="$HIDDEN_IMPORTS --hidden-import maintenance --hidden-import installer_github"
 
 .venv/bin/pyinstaller --onefile $HIDDEN_IMPORTS "$APP_NAME"
 

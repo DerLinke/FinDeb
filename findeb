@@ -285,42 +285,50 @@ def search(query):
     table.add_column("Top-Version", style="green")
     table.add_column("Beschreibung", style="dim")
 
+    def get_source_label(v):
+        return f"{v['source']} ({v['format']})" if v.get("format") else v["source"]
+
     for idx, item in enumerate(display_list, 1):
-        sources = ", ".join(sorted(set(v["source"] for v in item["variants"])))
+        sources = ", ".join(sorted(set(get_source_label(v) for v in item["variants"])))
         top_v = item["variants"][0]["version"]
         table.add_row(str(idx), item["display_name"], sources, str(top_v)[:15], item["description"][:60])
 
     console.print(table)
-    
+
     choices = [f"{str(idx).rjust(2)} │ {item['display_name'].ljust(25)} │ {len(item['variants'])} Optionen" for idx, item in enumerate(display_list, 1)]
     choices.append("Abbrechen")
-    selected_pkg = questionary.select("Paket wählen:", choices=choices, 
-                                     style=questionary.Style([
-                                         ('highlighted', f'fg:white bg:{BRAND_BLUE} bold'), 
-                                         ('pointer', f'fg:{BRAND_BLUE} bold'),
-                                         ('answer', f'fg:{BRAND_BLUE} bold')
-                                     ])).ask()
-    if not selected_pkg or "Abbrechen" in selected_pkg: return
-    pkg_idx = int(selected_pkg.split("│")[0].strip()) - 1
-    target_item = display_list[pkg_idx]
     
-    if len(target_item["variants"]) > 1:
-        # Detaillierte Auswahl der Variante
-        v_choices = []
-        for v in target_item["variants"]:
-            v_choices.append(f"{v['source'].ljust(10)} │ Version: {str(v['version']).ljust(15)} │ {v['name']}")
+    while True:
+        selected_pkg = questionary.select("Paket wählen:", choices=choices,
+                                         style=questionary.Style([
+                                             ('highlighted', f'fg:white bg:{BRAND_BLUE} bold'),
+                                             ('pointer', f'fg:{BRAND_BLUE} bold'),
+                                             ('answer', f'fg:{BRAND_BLUE} bold')
+                                         ])).ask()
+        if not selected_pkg or "Abbrechen" in selected_pkg: return
+        pkg_idx = int(selected_pkg.split("│")[0].strip()) - 1
+        target_item = display_list[pkg_idx]
+
+        if len(target_item["variants"]) > 1:
+            # Detaillierte Auswahl der Variante
+            v_choices = []
+            for v in target_item["variants"]:
+                v_choices.append(f"{get_source_label(v).ljust(25)} │ Version: {str(v['version']).ljust(15)} │ {v['name']}")
+            
+            v_choices.append("Zurück")
+            v_selected = questionary.select("Quelle/Version wählen:", choices=v_choices,
+                                           style=questionary.Style([
+                                               ('highlighted', f'fg:white bg:{BRAND_MAGENTA} bold'), 
+                                               ('pointer', f'fg:{BRAND_MAGENTA} bold'),
+                                               ('answer', f'fg:{BRAND_MAGENTA} bold')
+                                           ])).ask()
+            if not v_selected: return
+            if v_selected == "Zurück": continue
+            v_idx = v_choices.index(v_selected); final_pkg = target_item["variants"][v_idx]
+        else: final_pkg = target_item["variants"][0]
         
-        v_selected = questionary.select("Quelle/Version wählen:", choices=v_choices,
-                                       style=questionary.Style([
-                                           ('highlighted', f'fg:white bg:{BRAND_MAGENTA} bold'), 
-                                           ('pointer', f'fg:{BRAND_MAGENTA} bold'),
-                                           ('answer', f'fg:{BRAND_MAGENTA} bold')
-                                       ])).ask()
-        if not v_selected: return
-        v_idx = v_choices.index(v_selected); final_pkg = target_item["variants"][v_idx]
-    else: final_pkg = target_item["variants"][0]
-    
-    install_pkg(final_pkg)
+        install_pkg(final_pkg)
+        break
 
 def install_pkg(pkg):
     from rich.console import Console
@@ -329,8 +337,8 @@ def install_pkg(pkg):
     if pkg["source"] == "extrepo":
         run_sudo(["extrepo", "enable", pkg.get("repo_id", pkg["name"].replace(":", ""))])
         run_sudo(["apt", "update"]); run_sudo(["apt", "install", "-y", pkg["name"].replace(":", "")])
-    elif pkg["source"] == "appimage":
-        from installer_appimage import install_appimage; install_appimage(pkg)
+    elif pkg["source"] in ["appimage", "github"]:
+        from installer_github import install_github; install_github(pkg)
     elif pkg["source"] == "npm":
         try: subprocess.run(pkg["install_cmd"], check=True)
         except: run_sudo(pkg["install_cmd"])
@@ -356,7 +364,7 @@ def show_banner():
 
     console_print(f"          {C_L10}█{C_L11}█[/]     {C_R17}█{C_R18}█{C_R19}█{C_R20}█{C_R21}█[/]")
     console_print(f"     {C_L5}█{C_L6}█[/]                    {C_R26}█{C_R27}█[/]")
-    console_print(f"{C_L0}█{C_L1}█[/]                {C_R18}█{C_R19}█{C_R20}█{C_R21}█{C_R22}█[/] [bold white]FinDeb v1.0.0[/bold white]")
+    console_print(f"{C_L0}█{C_L1}█[/]                {C_R18}█{C_R19}█{C_R20}█{C_R21}█{C_R22}█[/] [bold white]FinDeb v1.1.0[/bold white]")
     console_print(f"     {C_L5}█{C_L6}█[/]                    {C_R26}█{C_R27}█[/]")
     console_print(f"          {C_L10}█{C_L11}█[/]     {C_R17}█{C_R18}█{C_R19}█{C_R20}█{C_R21}█[/]\n")
 

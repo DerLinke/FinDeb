@@ -28,7 +28,7 @@ Da `findeb` als eigenständiges Paket gebaut wird, sind keine Python-Abhängigke
 1. Lade die neueste `.deb`-Datei von der [Releases-Seite](https://github.com/DerLinke/FinDeb/releases) herunter.
 2. Installiere sie via Terminal:
    ```bash
-   sudo apt install ./findeb_1.0.0_amd64.deb
+   sudo apt install ./findeb_1.1.0_amd64.deb
    ```
 
 ### Für Entwickler (Source-Installation)

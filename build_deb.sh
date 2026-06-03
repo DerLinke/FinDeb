@@ -5,7 +5,8 @@
 
 set -e
 
-VERSION="1.1.0"
+# Version ermitteln (entweder Argument oder Default)
+VERSION="${1:-1.1.0}"
 MAINTAINER="Daniel Frey <https://github.com/DerLinke>"
 HOMEPAGE="https://github.com/DerLinke/FinDeb"
 DESCRIPTION="The Universal Package Manager Wrapper"
@@ -36,7 +37,14 @@ done
 # Zusätzliche Hidden-Imports für die Hauptlogik
 HIDDEN_IMPORTS="$HIDDEN_IMPORTS --hidden-import maintenance --hidden-import installer_github"
 
-.venv/bin/pyinstaller --onefile $HIDDEN_IMPORTS "$APP_NAME"
+# Prüfen ob .venv existiert, sonst globalen pyinstaller nutzen
+if [ -f ".venv/bin/pyinstaller" ]; then
+    PYINSTALLER=".venv/bin/pyinstaller"
+else
+    PYINSTALLER="pyinstaller"
+fi
+
+$PYINSTALLER --onefile $HIDDEN_IMPORTS "$APP_NAME"
 
 # 3. .deb Struktur aufbauen
 echo "󰚌 Erstelle Debian-Struktur..."

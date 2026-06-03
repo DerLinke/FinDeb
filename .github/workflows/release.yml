@@ -38,6 +38,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: "*.deb"
+          name: Release v${{ steps.get_version.outputs.VERSION }} (amd64)
+          body: "Automated release for amd64 architecture."
           draft: false
           prerelease: false
         env:

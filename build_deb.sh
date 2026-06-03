@@ -5,8 +5,10 @@
 
 set -e
 
-# Version ermitteln (entweder Argument oder Default)
-VERSION="${1:-1.1.0}"
+# Version ermitteln (entweder aus findeb extrahieren oder Argument)
+VERSION_FILE="findeb"
+VERSION=$(grep "^VERSION =" "$VERSION_FILE" | cut -d'"' -f2)
+VERSION="${1:-$VERSION}"
 MAINTAINER="Daniel Frey <https://github.com/DerLinke>"
 HOMEPAGE="https://github.com/DerLinke/FinDeb"
 DESCRIPTION="The Universal Package Manager Wrapper"

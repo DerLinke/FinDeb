@@ -22,14 +22,22 @@
 
 ## 📦 Installation
 
-### Der einfachste Weg (.deb Paket)
-Da `findeb` als eigenständiges Paket gebaut wird, sind keine Python-Abhängigkeiten auf deinem System nötig. Das Paket wurde auf **Debian Trixie** (Testing) gebaut und ist kompatibel mit modernen Debian-basierten Systemen (Ubuntu, Pop!_OS, etc.).
+### Der schnellste Weg (APT Repository)
+Da `findeb` Teil des zentralen **DerLinke Repositories** ist, kannst du es einfach so installieren:
 
-1. Lade die neueste `.deb`-Datei von der [Releases-Seite](https://github.com/DerLinke/FinDeb/releases) herunter.
-2. Installiere sie via Terminal:
+1. Repository hinzufügen (falls noch nicht geschehen):
    ```bash
-   sudo apt install ./findeb_1.1.0_amd64.deb
+   curl -s https://derlinke.github.io/derlinke-repo.gpg.key | gpg --dearmor | sudo tee /usr/share/keyrings/derlinke-repo.gpg > /dev/null
+   echo "deb [signed-by=/usr/share/keyrings/derlinke-repo.gpg] https://derlinke.github.io/ stable main" | sudo tee /etc/apt/sources.list.d/derlinke.list
    ```
+
+2. Installieren:
+   ```bash
+   sudo apt update
+   sudo apt install findeb
+   ```
+
+### Manuelle Installation (.deb Paket)
 
 ### Für Entwickler (Source-Installation)
 ```bash
@@ -55,5 +63,7 @@ Dieses Projekt lebt vom Austausch! Wir wollen die Brücke zwischen klassischen R
 
 ---
 <p align="center">
-  <img src="logo.svg" width="450" alt="FinDeb Logo">
+  <img src="https://derlinke.github.io/logo.svg" width="300" alt="Logo"><br>
+  <strong>DerLinke Software Zentrale</strong><br>
+  <a href="https://derlinke.github.io/">Offizielle Webseite</a> | <a href="https://github.com/DerLinke/FinDeb">GitHub Repository</a>
 </p>

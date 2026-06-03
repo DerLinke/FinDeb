@@ -9,6 +9,11 @@ import importlib.util
 from concurrent.futures import ThreadPoolExecutor
 from packaging import version
 
+# --- INITIALISIERUNG ---
+SCRIPTNAME = "FinDeb"
+VERSION = "1.1.0"
+REPO_URL = "https://github.com/DerLinke/FinDeb"
+
 # Pfade für die isolierte Umgebung & Konfiguration
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 VENV_DIR = os.path.join(BASE_DIR, ".venv")
@@ -48,136 +53,88 @@ def load_config():
         try:
             with open(CONFIG_FILE, "r") as f:
                 config = json.load(f)
-                # Sicherstellen, dass alle Keys vorhanden sind
-                for key, val in default_config.items():
-                    if key not in config: config[key] = val
+                # Migration: Alte Configs ergänzen
+                for k, v in default_config.items():
+                    if k not in config: config[k] = v
                 return config
-        except Exception as e:
-            console_print(f"[bold red]⚠ Fehler beim Laden der Konfiguration:[/bold red] {e}")
-            console_print("[yellow]Verwende Standardwerte.[/yellow]")
+        except Exception:
+            pass
     return default_config
-
-def save_config(config):
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(config, f, indent=4)
 
 def get_cache():
     if os.path.exists(CACHE_FILE):
         try:
             with open(CACHE_FILE, "r") as f:
                 return json.load(f)
-        except Exception as e:
-            console_print(f"[bold red]⚠ Fehler beim Lesen des Cache:[/bold red] {e}")
+        except Exception:
+            pass
     return {}
 
-def save_cache(cache_data):
+def save_cache(cache):
     if not os.path.exists(CACHE_DIR):
         os.makedirs(CACHE_DIR)
-    with open(CACHE_FILE, "w") as f:
-        json.dump(cache_data, f, indent=4)
+    try:
+        with open(CACHE_FILE, "w") as f:
+            json.dump(cache, f)
+    except Exception:
+        pass
 
 def clear_cache():
     if os.path.exists(CACHE_FILE):
         os.remove(CACHE_FILE)
-        console_print("[green]Cache geleert.[/green]")
-
-def ensure_manager_installed(source_key):
-    managers = {"snap": "snapd", "flatpak": "flatpak", "extrepo": "extrepo", "pipx": "pipx", "npm": "nodejs", "pkcon": "packagekit-tools"}
-    pkg = managers.get(source_key)
-    check_bin = source_key
-    if source_key == "npm" and shutil.which("node"): check_bin = "node"
-    if pkg and not shutil.which(check_bin if source_key != "pkcon" else "pkcon"):
-        console_print(f"\n[yellow]󰚌 Die Quelle '{source_key}' benötigt das Paket '{pkg}'.[/yellow]")
-        
-        # Prüfung auf Interaktivität und Bestätigung
-        if check_module("questionary"):
-            import questionary
-            if not questionary.confirm(f"Soll '{pkg}' jetzt installiert werden? (Dies führt 'apt update' aus)").ask():
-                return False
-        else:
-            try:
-                choice = input(f"Soll '{pkg}' jetzt installiert werden? (y/n): ")
-                if choice.lower() not in ['y', 'j', 'yes']:
-                    return False
-            except EOFError:
-                return False
-
-        run_sudo(["apt", "update"])
-        run_sudo(["apt", "install", "-y", pkg])
-        if source_key == "pipx": subprocess.run(["pipx", "ensurepath"])
-        return True
-    return False
-
-def setup():
-    if not is_in_venv() and os.path.exists(VENV_PYTHON):
-        os.execv(VENV_PYTHON, [VENV_PYTHON, os.path.abspath(__file__)] + sys.argv[1:])
-        return
-
-    import questionary
-    from rich.panel import Panel
-    from rich.console import Console
-    console = Console()
-    console.print(Panel("[bold blue]findeb Setup[/bold blue]\nWähle deine Quellen. Fehlende Tools werden bei Bedarf installiert.", expand=False, border_style="dim"))
-    
-    current_config = load_config()
-    all_possible = [
-        ("apt", "apt (Standard Debian Repos)"), ("extrepo", "extrepo (PPA/Drittanbieter)"),
-        ("deb-get", "deb-get (Direkt von GitHub)"), ("flatpak", "flatpak (Flathub Apps)"),
-        ("snap", "snap (Snapcraft Apps)"), ("appimage", "appimage (GitHub Binaries)"),
-        ("pipx", "pipx (Python CLI Tools)"), ("npm", "npm (Node.js Tools)"),
-        ("pkcon", "pkcon (PackageKit / KDE)"), ("pacman", "pacman (Arch Linux)")
-    ]
-    
-    enabled_now = current_config.get("enabled_sources", [])
-    choices = []
-    for key, label in all_possible:
-        is_installed = shutil.which(key if key != "pkcon" else "pkcon") is not None
-        if key == "npm" and shutil.which("node"): is_installed = True
-        if key in ["apt", "extrepo", "deb-get", "appimage"]: is_installed = True 
-        status = "" if is_installed else " [dim](nicht installiert)[/dim]"
-        choices.append({"name": f"{label}{status}", "value": key, "checked": key in enabled_now})
-    
-    selected_sources = questionary.checkbox("Aktiviere deine gewünschten Quellen:", choices=choices).ask()
-    if selected_sources is None: return
-
-    # Neues Feature: Cache TTL konfigurieren
-    ttl_choices = [
-        {"name": "1 Stunde", "value": 1},
-        {"name": "6 Stunden", "value": 6},
-        {"name": "12 Stunden (Standard)", "value": 12},
-        {"name": "24 Stunden", "value": 24},
-        {"name": "Kein Cache (0h)", "value": 0}
-    ]
-    selected_ttl = questionary.select(
-        "Cache-Dauer für Suchergebnisse:", 
-        choices=ttl_choices, 
-        default=next((c for c in ttl_choices if c["value"] == current_config.get("cache_ttl_hours", 12)), ttl_choices[2])
-    ).ask()
-
-    # Neues Feature: Ignorierte Pakete (einfache Textabfrage)
-    current_ignored = ", ".join(current_config.get("ignored_packages", []))
-    ignored_input = questionary.text("Ignorierte Pakete (kommagetrennt):", default=current_ignored).ask()
-    ignored_list = [i.strip() for i in ignored_input.split(",") if i.strip()]
-
-    if selected_sources is not None:
-        for src in selected_sources:
-            if src not in ["apt", "appimage", "deb-get"]: ensure_manager_installed(src)
-        
-        save_config({
-            "enabled_sources": selected_sources,
-            "cache_ttl_hours": selected_ttl,
-            "ignored_packages": ignored_list
-        })
-        console_print("[bold green]✅ Setup abgeschlossen![/bold green]")
+    console_print("[green]Cache geleert.[/green]")
 
 def get_version_key(v_str):
-    """Hilfsfunktion für stabiles Versions-Sorting."""
     try:
-        # Bereinigen von Präfixen wie 'v'
-        clean_v = v_str.lower().replace("v", "").split("-")[0].split("+")[0]
-        return version.parse(clean_v)
-    except:
+        return version.parse(v_str)
+    except Exception:
         return version.parse("0.0.0")
+
+def group_packages(all_results, query):
+    # Gruppierung & Filterung
+    final_list = []
+    grouped = {}
+    from difflib import SequenceMatcher
+    config = load_config()
+    ignored = config.get("ignored_packages", [])
+    
+    for res in all_results:
+        raw_name = res["name"].replace(":", "").split("(")[0].strip()
+        name_key = raw_name.lower()
+        
+        # Exclusion Criteria
+        if any(ign.lower() in name_key for ign in ignored):
+            continue
+            
+        if name_key not in grouped: grouped[name_key] = []
+        grouped[name_key].append(res)
+        
+    for name_key, variants in grouped.items():
+        # Innerhalb der Varianten sortieren: Neueste Version oder bevorzugte Quellen zuerst
+        variants.sort(key=lambda x: get_version_key(str(x.get("version", "0"))), reverse=True)
+        
+        max_score = max(v.get("score", 30) for v in variants)
+        display_name = variants[0]["name"].replace(":", "").split("(")[0].strip()
+        
+        # Scoring-Logik verfeinern
+        if query.lower() == name_key: 
+            max_score += 100
+        elif name_key.startswith(query.lower()): 
+            max_score += 50
+        
+        # Fuzzy Match Score (difflib)
+        ratio = SequenceMatcher(None, query.lower(), name_key).ratio()
+        max_score += int(ratio * 40)
+        
+        final_list.append({
+            "display_name": display_name,
+            "variants": variants,
+            "score": max_score,
+            "description": variants[0]["description"]
+        })
+
+    final_list.sort(key=lambda x: (-x["score"], x["display_name"]))
+    return final_list[:35]
 
 def search(query):
     if not is_in_venv() and os.path.exists(VENV_PYTHON):
@@ -193,7 +150,6 @@ def search(query):
     
     config = load_config()
     enabled = config.get("enabled_sources", [])
-    ignored = config.get("ignored_packages", [])
     console = Console()
 
     # Cache Check (TTL aus Config)
@@ -233,47 +189,8 @@ def search(query):
     if not all_results:
         console_print("[red]Keine Treffer.[/red]"); return
 
-    # Gruppierung & Filterung
-    final_list = []
-    grouped = {}
-    from difflib import SequenceMatcher
-    for res in all_results:
-        raw_name = res["name"].replace(":", "").split("(")[0].strip()
-        name_key = raw_name.lower()
-        
-        # Exclusion Criteria
-        if any(ign.lower() in name_key for ign in ignored):
-            continue
-            
-        if name_key not in grouped: grouped[name_key] = []
-        grouped[name_key].append(res)
-    for name_key, variants in grouped.items():
-        # Innerhalb der Varianten sortieren: Neueste Version oder bevorzugte Quellen zuerst
-        variants.sort(key=lambda x: get_version_key(str(x.get("version", "0"))), reverse=True)
-        
-        max_score = max(v.get("score", 30) for v in variants)
-        display_name = variants[0]["name"].replace(":", "").split("(")[0].strip()
-        
-        # Scoring-Logik verfeinern
-        if query.lower() == name_key: 
-            max_score += 100
-        elif name_key.startswith(query.lower()): 
-            max_score += 50
-        
-        # Fuzzy Match Score (difflib)
-        ratio = SequenceMatcher(None, query.lower(), name_key).ratio()
-        max_score += int(ratio * 40)
-        
-        final_list.append({
-            "display_name": display_name,
-            "variants": variants,
-            "score": max_score,
-            "description": variants[0]["description"]
-        })
-
-    final_list.sort(key=lambda x: (-x["score"], x["display_name"]))
-    display_list = final_list[:35]
-
+    display_list = group_packages(all_results, query)
+    
     # Definition der Branding-Farben für die Tabelle
     BRAND_BLUE = "#0000FF"
     BRAND_MAGENTA = "#96009F"
@@ -293,7 +210,8 @@ def search(query):
         top_v = item["variants"][0]["version"]
         table.add_row(str(idx), item["display_name"], sources, str(top_v)[:15], item["description"][:60])
 
-    console.print(table)
+    console_print(table)
+    show_footer()
 
     choices = [f"{str(idx).rjust(2)} │ {item['display_name'].ljust(25)} │ {len(item['variants'])} Optionen" for idx, item in enumerate(display_list, 1)]
     choices.append("Abbrechen")
@@ -364,9 +282,22 @@ def show_banner():
 
     console_print(f"          {C_L10}█{C_L11}█[/]     {C_R17}█{C_R18}█{C_R19}█{C_R20}█{C_R21}█[/]")
     console_print(f"     {C_L5}█{C_L6}█[/]                    {C_R26}█{C_R27}█[/]")
-    console_print(f"{C_L0}█{C_L1}█[/]                {C_R18}█{C_R19}█{C_R20}█{C_R21}█{C_R22}█[/] [bold white]FinDeb v1.1.0[/bold white]")
+    console_print(f"{C_L0}█{C_L1}█[/]                {C_R18}█{C_R19}█{C_R20}█{C_R21}█{C_R22}█[/] [bold white]{SCRIPTNAME} v{VERSION}[/bold white]")
     console_print(f"     {C_L5}█{C_L6}█[/]                    {C_R26}█{C_R27}█[/]")
     console_print(f"          {C_L10}█{C_L11}█[/]     {C_R17}█{C_R18}█{C_R19}█{C_R20}█{C_R21}█[/]\n")
+
+def show_footer():
+    console_print(f"\n[blue]----------------------------------------------------[/]")
+    console_print(f"  [bold white]{SCRIPTNAME} v{VERSION}[/bold white]")
+    console_print(f"  [dim]Web:[/][blue underline] https://derlinke.github.io/[/]")
+    console_print(f"  [dim]Git:[/][blue underline] {REPO_URL}[/]")
+    
+    # Kleines Logo-Icon (Cyber-Strip)
+    C_L0 = "[rgb(255,0,0)]"
+    C_L10 = "[rgb(161,0,94)]"
+    C_R27 = "[rgb(0,0,255)]"
+    console_print(f"  {C_L0}██[/]{C_L10}██[/]{C_R27}██[/]")
+    console_print(f"[blue]====================================================[/]\n")
 
 def main():
     show_banner()

@@ -260,6 +260,16 @@ def install_pkg(pkg):
     elif pkg["source"] == "npm":
         try: subprocess.run(pkg["install_cmd"], check=True)
         except: run_sudo(pkg["install_cmd"])
+    elif pkg["source"] == "deb-get":
+        try:
+            subprocess.run(pkg["install_cmd"], check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            console_print("[bold red]Fehler: deb-get Installation fehlgeschlagen.[/bold red]")
+            if e.stderr:
+                console_print(f"[red]{e.stderr.strip()}[/red]")
+            if e.stdout:
+                console_print(f"[dim]{e.stdout.strip()}[/dim]")
+            sys.exit(1)
     else: run_sudo(pkg["install_cmd"])
 
 def show_banner():
